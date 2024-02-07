@@ -10,7 +10,7 @@ export class ProductService {
   constructor(
     @InjectRepository(ProductEntity)
     private readonly productEntityRepository: Repository<ProductEntity>,
-  ) {}
+  ) { }
 
   /**
    *
@@ -78,22 +78,5 @@ export class ProductService {
     });
     if (count === productIds.length) return true;
     else return false;
-  }
-
-  async manageInventory(items: object[], productIds: number[]): Promise<void> {
-    let records = await this.productEntityRepository.findBy({
-      productId: In(productIds),
-    });
-    records = records.map((v) => {
-      const item: any = items.find((e: any) => e.productId === v.productId);
-      v.inventory = v.inventory - item.quantity;
-      if (v.inventory < 0) {
-        throw new BadRequestException(
-          `productId: ${item.productId}, Inventory not available for ${item.quantity} quantity, available quantity is ${v.inventory + item.quantity}`,
-        );
-      }
-      return v;
-    });
-    await this.productEntityRepository.save(records);
   }
 }

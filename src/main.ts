@@ -14,15 +14,15 @@ async function bootstrap() {
       exceptionFactory: (errors) => {
         let errMsg;
         errors.forEach((err) => {
-          if (err.children && err.children.length > 0) {
+          if (err?.children && err.children?.length > 0) {
             let childError: any = err.children[0];
             childError =
-              childError.children && childError.children.length > 0
-                ? childError.children[0].constrains
+              childError?.children && childError.children?.length > 0
+                ? childError.children[0]?.constraints
                 : 'Validation error';
             errMsg = Object.values(childError).join('. ').trim();
           } else {
-            errMsg = Object.values(err.constraints).join('. ').trim();
+            errMsg = Object.values(err?.constraints).join('. ').trim();
           }
         });
         throw new BadRequestException(errMsg);

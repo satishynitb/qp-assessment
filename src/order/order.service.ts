@@ -1,55 +1,79 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderEntity } from './entities/order.entity';
 import { OrderDetailsEntity } from './entities/order-details.entity';
 import { ProductService } from '../product/product.service';
+import { ProductEntity } from 'src/product/entities/product.entity';
 
 @Injectable()
 export class OrderService {
   constructor(
-    @InjectRepository(OrderEntity)
-    private readonly orderRepository: Repository<OrderEntity>,
-    @InjectRepository(OrderDetailsEntity)
-    private readonly orderDetailsRepository: Repository<OrderDetailsEntity>,
     private readonly productService: ProductService,
-  ) {}
+    private dataSource: DataSource
+  ) { }
 
   async bookOrder(
     createOrderDto: CreateOrderDto,
     userName: string,
   ): Promise<any> {
-    const orderEntitybject = {
-      userName,
-      total: createOrderDto.total,
-      dateTime: new Date(),
-    };
-    const productIds: number[] = createOrderDto.items.map((e) => e.productId);
-    const isValid: boolean =
-      await this.productService.isValidateProductIds(productIds);
-    if (!isValid) {
-      throw new BadRequestException(
-        'Product Ids are invalid. Please validate.',
-      );
-    }
-    await this.productService.manageInventory(createOrderDto.items, productIds);
-    const orderEntityRes = await this.orderRepository.save(orderEntitybject);
-    if (orderEntityRes?.orderId) {
+    const response: any = {};
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const orderEntitybject = {
+        userName,
+        total: createOrderDto.total,
+        dateTime: new Date(),
+      };
+      const productIds: number[] = createOrderDto.items.map((e) => e.productId);
+      const isValid: boolean =
+        await this.productService.isValidateProductIds(productIds);
+      if (!isValid) {
+        throw new BadRequestException(
+          'Product Ids are invalid. Please validate.',
+        );
+      }
+      const records:any = await this.manageInventory(createOrderDto.items, productIds, queryRunner);
+      await queryRunner.manager.save(ProductEntity, records);
+      const orderEntityRes = await queryRunner.manager.save(OrderEntity, orderEntitybject);
       const orderDetailsList = [];
       for (const item of createOrderDto.items) {
         orderDetailsList.push({
-          orderId: orderEntityRes.orderId,
+          orderId: orderEntityRes?.orderId,
           productId: item.productId,
           quantity: item.quantity,
           totalPrice: item.totalPrice,
         });
       }
-      await this.orderDetailsRepository.save(orderDetailsList);
+      await queryRunner.manager.save(OrderDetailsEntity, orderDetailsList);
+      await queryRunner.commitTransaction();
+      response.orderId = orderEntityRes.orderId;
+      response.dateTime = orderEntityRes.dateTime;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-    return {
-      orderId: orderEntityRes.orderId,
-      dateTime: orderEntityRes.dateTime,
-    };
+    return response;
+  }
+
+  private async manageInventory(items: object[], productIds: number[], queryRunner): Promise<void> {
+    let records = await queryRunner.manager.findBy(ProductEntity, {
+      productId: In(productIds),
+    });
+    records = records.map((v) => {
+      const item: any = items.find((e: any) => e.productId === v.productId);
+      v.inventory = v.inventory - item.quantity;
+      if (v.inventory < 0) {
+        throw new BadRequestException(
+          `productId: ${item.productId}, Inventory not available for ${item.quantity} quantity, available quantity is ${v.inventory + item.quantity}`,
+        );
+      }
+      return v;
+    });
+    return records;
   }
 }
