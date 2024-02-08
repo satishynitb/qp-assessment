@@ -13,9 +13,9 @@ export class ProductService {
   ) { }
 
   /**
-   *
+   * It will create the grocery item.
    * @param createProductDto
-   * @returns
+   * @returns ProductEntity
    */
   async createProdct(
     createProductDto: CreateProductDto,
@@ -24,18 +24,18 @@ export class ProductService {
   }
 
   /**
-   *
-   * @returns
+   * It will return all the grocery items.
+   * @returns ProductEntity[]
    */
   findAllProduct(): Promise<ProductEntity[]> {
     return this.productEntityRepository.find();
   }
 
   /**
-   *
+   * It will update the grocery item by product id.
    * @param productId
    * @param updateDto
-   * @returns
+   * @returns ProductEntity
    */
   async updateProduct(
     productId: number,
@@ -56,7 +56,7 @@ export class ProductService {
   }
 
   /**
-   *
+   * It will delete grocery item by product id.
    * @param productId
    * @returns
    */
@@ -65,14 +65,19 @@ export class ProductService {
   }
 
   /**
-   *
-   * @returns
+   * It will return all available grocery items 
+   * @returns ProductEntity[]
    */
   viewAvailableProduct(): Promise<ProductEntity[]> {
     return this.productEntityRepository.findBy({ inventory: MoreThan(0) });
   }
 
-  async isValidateProductIds(productIds: number[]) {
+  /**
+   * It will validate product ids are valid or not. if valid, it will return true otherwise false.
+   * @param productIds 
+   * @returns boolean true | false
+   */
+  async isValidateProductIds(productIds: number[]): Promise<boolean> {
     const count = await this.productEntityRepository.countBy({
       productId: In(productIds),
     });

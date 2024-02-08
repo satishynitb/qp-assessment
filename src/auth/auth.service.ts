@@ -26,9 +26,9 @@ export class AuthService {
   ];
 
   /**
-   *
+   * It will authenticate the user and return JWT token.
    * @param authenticateDto
-   * @returns
+   * @returns Token
    */
   authenticate(authenticateDto: AuthenticateDto): Token {
     const user = this.users.find((u) => {

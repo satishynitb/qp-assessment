@@ -13,10 +13,16 @@ export class OrderService {
     private dataSource: DataSource
   ) { }
 
+/**
+ * It will book the order.
+ * @param createOrderDto 
+ * @param userName 
+ * @returns object { orderId, dateTime }
+ */
   async bookOrder(
     createOrderDto: CreateOrderDto,
     userName: string,
-  ): Promise<any> {
+  ): Promise<object> {
     const response: any = {};
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -60,7 +66,14 @@ export class OrderService {
     return response;
   }
 
-  private async manageInventory(items: object[], productIds: number[], queryRunner): Promise<void> {
+  /**
+   * It will manage grocery item inventory.
+   * @param items 
+   * @param productIds 
+   * @param queryRunner 
+   * @returns ProductEntity[]
+   */
+  private async manageInventory(items: object[], productIds: number[], queryRunner): Promise<ProductEntity[]> {
     let records = await queryRunner.manager.findBy(ProductEntity, {
       productId: In(productIds),
     });
